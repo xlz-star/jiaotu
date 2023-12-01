@@ -32,7 +32,7 @@ admin.uname: admin
 admin.pwd: 123
 
 # 域名配置
-domain: http://localhost:${server.port}
+domain: http://192.168.0.110:${server.port}
 
 # sa-token配置
 sa-token:

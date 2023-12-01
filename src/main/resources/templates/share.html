@@ -22,7 +22,7 @@
 <div class="layui-container" style="padding-top: 15px;">
     <div class="layui-card">
         <div class="layui-card-header" style="height: 80px">
-            Hello! 管理员给你分享了一个文件~<br>
+            Hello! <span th:text="${username}"></span> 给你分享了一个文件~<br>
             <span th:if="${exists}" style="color: red;text-decoration: underline">
                 自动销毁时间：<span th:text="${expireTime}"></span>
             </span>

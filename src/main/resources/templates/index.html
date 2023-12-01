@@ -100,13 +100,11 @@
 <script type="text/javascript" src="/assets/clipboard.min.js"></script>
 <script type="text/javascript" src="/assets/config.js"></script>
 <script>
-    layui.use(['jquery', 'layer', 'element', 'upload', 'laytpl', 'util'], function () {
+    layui.use(['jquery', 'layer', 'upload', 'laytpl'], function () {
         var $ = layui.jquery;
         var layer = layui.layer;
-        var element = layui.element;
         var upload = layui.upload;
         var laytpl = layui.laytpl;
-        var util = layui.util;
 
         // 渲染文件列表
         function renderList(dir) {
@@ -235,7 +233,9 @@
 
         // 下载
         $('#down').click(function () {
-            var fullName = mUrl.substring(7);
+            var uname = $('#loginUname').text();
+            console.log(uname);
+            var fullName = uname + mUrl.substring(7);
             window.open("/file?p=" + fullName + "&d=1", '_blank');
         });
 

@@ -13,11 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.noear.solon.annotation.Component;
 import org.noear.solon.annotation.Inject;
 import org.noear.solon.core.handle.ModelAndView;
-import org.sagacity.sqltoy.dao.SqlToyLazyDao;
-import org.sagacity.sqltoy.model.EntityQuery;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 登录服务实现
@@ -80,7 +77,6 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public ModelAndView loginOut() {
-        // TODO 登出功能实现
         ModelAndView modelAndView = new ModelAndView();
         StpUtil.logout();
         return modelAndView.view("login.html");

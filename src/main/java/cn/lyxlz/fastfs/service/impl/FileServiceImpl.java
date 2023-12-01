@@ -53,7 +53,10 @@ public class FileServiceImpl implements FileService {
     public Map<String, Object> upload(UploadedFile file, String curPos) {
         curPos = curPos.substring(1) + SLASH;
         checkFileDir();
-        String fileDir = system.getFileDir();
+        String dir = curPos;
+        String username = (String) StpUtil.getLoginId();
+        // 判断是否是管理员用户，管理员可以访问其他用户文件夹
+        String fileDir = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
         // 文件原始名称
         String fileName = file.getName();
         String suffix = fileName.substring(fileName.lastIndexOf(".") + 1);
@@ -67,7 +70,7 @@ public class FileServiceImpl implements FileService {
         } else {
             int index = 1;
             path = curPos + fileName;
-            outFile = FileUtil.file(fileDir + path);
+            outFile = FileUtil.file(fileDir + fileName);
             // 防止文件名重复，以数字后缀重命名
             while (outFile.exists()) {
                 path = curPos + prefix + "(" + index + ")." + suffix;
@@ -136,7 +139,6 @@ public class FileServiceImpl implements FileService {
         } else if (dir.startsWith(SLASH)) {
             dir = dir.substring(1);
         }
-        // TODO 将system.dir换成用户dir
         String username = (String) StpUtil.getLoginId();
         // 判断是否是管理员用户，管理员可以访问其他用户文件夹
         String path = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
@@ -218,8 +220,12 @@ public class FileServiceImpl implements FileService {
     public Map<String, Object> del(String file) {
         checkFileDir();
         if (file != null && !file.isEmpty()) {
-            File f = FileUtil.file(system.getFileDir() + file);
-            File smF = FileUtil.file(system.getFileDir() + "sm/" + file);
+            String username = (String) StpUtil.getLoginId();
+            String dir = "/";
+            // 判断是否是管理员用户，管理员可以访问其他用户文件夹
+            String fileDir = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
+            File f = FileUtil.file(fileDir + file);
+            File smF = FileUtil.file(fileDir + "sm/" + file);
             if (f.exists()) {
                 // 文件
                 if (f.isFile()) {
@@ -246,7 +252,9 @@ public class FileServiceImpl implements FileService {
     @Override
     public Map<String, Object> rename(String oldFile, String newFile) {
         checkFileDir();
-        String fileDir = system.getFileDir();
+        String username = (String) StpUtil.getLoginId();
+        String dir = "/";
+        String fileDir = system.getFileDir() + username + SLASH + dir;
         if (StrUtil.isNotEmpty(oldFile) && StrUtil.isNotEmpty(newFile)) {
             // 原文件
             File f = FileUtil.file(fileDir + oldFile);
@@ -270,7 +278,11 @@ public class FileServiceImpl implements FileService {
         checkFileDir();
         if (StrUtil.isNotEmpty(curPos) && StrUtil.isNotEmpty(dirName)) {
             curPos = curPos.substring(1);
-            String dirPath = system.getFileDir() + curPos + SLASH + dirName;
+//            String dirPath = system.getFileDir() + curPos + SLASH + dirName;
+            String username = (String) StpUtil.getLoginId();
+            // 判断是否是管理员用户，管理员可以访问其他用户文件夹
+            String dirPath = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + curPos + SLASH + dirName : system.getFileDir() + SLASH + username + SLASH + dirName;
+
             File f = FileUtil.file(dirPath);
             if (f.exists()) {
                 return getRS(500, "目录已存在");
@@ -284,6 +296,11 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public Map<String, Object> share(String file, int time) {
+        String username = (String) StpUtil.getLoginId();
+        // 判断是否是管理员用户，管理员可以访问其他用户文件夹
+        String dir = "/";
+//        file = system.getFileDir() + username + SLASH + dir + SLASH + file;
+        file = ObjUtil.equals(username, system.getUname()) ? dir + SLASH + file : username + SLASH + file;
         // 若文件已经分享
         if (ObjUtil.isNotEmpty(CacheUtil.dataMap) &&
                 CacheUtil.dataMap.containsValue(file)) {
@@ -313,6 +330,7 @@ public class FileServiceImpl implements FileService {
     @Override
     public ModelAndView sharePage(String sid) {
         ModelAndView modelAndView = new ModelAndView();
+        modelAndView.put("username", (String) StpUtil.getLoginId());
         if (ObjUtil.isNotEmpty(CacheUtil.dataMap) &&
                 CacheUtil.dataMap.containsKey(sid)) {
             // 是否在有效期内
@@ -320,7 +338,7 @@ public class FileServiceImpl implements FileService {
             if (expireDate != null && expireDate.compareTo(new Date()) > 0) {
                 String url = (String) CacheUtil.get(sid);
                 // 文件是否存在
-                File existFile = new File(system.getFileDir() + url);
+                File existFile = new File(system.getFileDir() + SLASH + url);
                 if (!existFile.exists()) {
                     modelAndView.put("exists", false);
                     modelAndView.put("msg", "该文件已不存在~");
@@ -408,8 +426,10 @@ public class FileServiceImpl implements FileService {
             return useNginx(p, modelAndView);
         }
         checkFileDir();
-        String fileDir = system.getFileDir();
-        outputFile(fileDir + p, download, modelAndView);
+        if (p.startsWith(system.getUname())) {
+            p = p.replaceFirst(system.getUname(), "");
+        }
+        outputFile(system.getFileDir() + p, download, modelAndView);
         return null;
     }
 
@@ -430,17 +450,19 @@ public class FileServiceImpl implements FileService {
                 if (expireDate != null && expireDate.compareTo(new Date()) > 0) {
                     url = (String) CacheUtil.get(sid);
                     // 文件是否存在
-                    File existFile = new File(system.getFileDir() + url);
-                    modelAndView.view("error.html");
+                    File existFile = new File(system.getFileDir() + SLASH + url);
                     if (!existFile.exists()) {
+                        modelAndView.view("error.html");
                         modelAndView.put("msg", "该文件已不存在~");
                         return modelAndView;
                     }
                 } else {
+                    modelAndView.view("error.html");
                     modelAndView.put("msg", "分享文件已过期");
                     return modelAndView;
                 }
             } else {
+                modelAndView.view("error.html");
                 modelAndView.put("msg", "无效的sid");
                 return modelAndView;
             }
