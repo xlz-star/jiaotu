@@ -1,6 +1,8 @@
 # JiaoTu
 ## 狡兔
 
+<img src=".\jiaotuLOGO.png" alt="jiaotuLOGO" style="zoom:67%;" />
+
 狡兔三窟，顾名思义，将文件存储在多个服务器上，是一款基于Solon的轻量级云存储系统
 
 ## 为什么要开发它
