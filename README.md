@@ -1,6 +1,7 @@
-# fastfs
+# JiaoTu
+## 狡兔
 
-一款基于Solon的轻量级云存储系统
+狡兔三窟，顾名思义，将文件存储在多个服务器上，是一款基于Solon的轻量级云存储系统
 
 ## 为什么要开发它
 
@@ -22,6 +23,28 @@
 - 它使用`jdk21`开发，支持虚拟线程，并发量相较于之前有较大的提升
 - 它使用的框架基本都为国产框架：`Solon`、`Hutool`、`SaToken`等
 - ......
+
+## 如何使用
+
+主节点：修改app.yml
+```yml
+fs:
+  dir: 可为空，可以选保存文件的位置
+  master: true
+  works:
+    - 数据节点1
+    - 数据节点2
+  node:
+    nodeName: master
+    total: 20G
+```
+数据节点：修改app.yml
+```yml
+fs:
+  master: false
+domain: http://xxxx:${server.port}
+```
+别忘了导入数据库SQL ~
 
 ## 写在最后
 
