@@ -1,6 +1,8 @@
 package cn.lyxlz.fastfs;
 
+import cn.lyxlz.fastfs.service.DistributService;
 import org.noear.solon.Solon;
+import org.noear.solon.annotation.Inject;
 import org.noear.solon.annotation.SolonMain;
 import org.noear.solon.boot.http.HttpServerConfigure;
 
@@ -16,10 +18,9 @@ import java.util.concurrent.Executors;
 public class App {
 
     public static void main(String[] args) {
-        Solon.start(App.class, args, app-> app.onEvent(HttpServerConfigure.class, e -> {
+        Solon.start(App.class, args, app -> app.onEvent(HttpServerConfigure.class, e -> {
             // 启用虚拟线程
             e.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         }));
     }
-
 }

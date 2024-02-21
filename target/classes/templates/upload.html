@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>上传</title>
+    <link rel="stylesheet" href="/assets/layui/css/layui.css">
+</head>
+<body>
+<div class="layui-upload-drag" style="display: block;" id="btnUpload">
+    <div style="text-align: center;height: 265px;">
+        <i class="layui-icon layui-icon-upload" style="top: 0;left: 0;right: 0;bottom: 0;"></i>
+        <div>点击上传，或将文件拖拽到此处</div>
+    </div>
+
+</div>
+
+<!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
+<script src="/assets/layui/layui.js"></script>
+<script src="/assets/config.js"></script>
+<script>
+    layui.use(function () {
+        var upload = layui.upload;
+        var $ = layui.$;
+        // 渲染
+        upload.render({
+            elem: '#btnUpload',
+            data: {},
+            url: baseServer + 'file/upload',
+            before: function (obj) {
+                // 动态传参
+                this.data.curPos = $('#tvFP', window.parent.document).text();
+            },
+            done: function (res, index, upload) {
+                layer.closeAll('loading');
+                layer.msg('上传成功');
+                if (res.code !== 200) {
+                    layer.msg(res.msg, {icon: 2});
+                } else {
+                    layer.msg(res.msg, {icon: 1});
+                    let selfPageIndex = parent.layer.getFrameIndex(window.name); // 先得到当前 iframe 层的索引
+                    console.log("关闭iframe层")
+                    parent.layer.close(selfPageIndex); // 再执行关闭
+                }
+            },
+            error: function () {
+                layer.closeAll('loading');
+                layer.msg('上传失败', {icon: 2});
+            },
+            accept: 'file'
+        });
+    });
+</script>
+</body>
+</html>

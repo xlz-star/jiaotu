@@ -1,16 +1,27 @@
 package cn.lyxlz.fastfs.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.FileTypeUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.URLUtil;
+import cn.hutool.http.HtmlUtil;
+import cn.hutool.http.HttpUtil;
 import cn.lyxlz.fastfs.constant.FileTypeEnum;
+import cn.lyxlz.fastfs.constant.HttpTypeEnum;
+import cn.lyxlz.fastfs.dao.FileDao;
 import cn.lyxlz.fastfs.dao.UserDao;
+import cn.lyxlz.fastfs.entity.*;
 import cn.lyxlz.fastfs.entity.System;
+import cn.lyxlz.fastfs.service.DistributService;
 import cn.lyxlz.fastfs.service.FileService;
 import cn.lyxlz.fastfs.util.CacheUtil;
+import cn.lyxlz.fastfs.util.NodeUtil;
+import cn.lyxlz.fastfs.util.ResUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.noear.solon.annotation.Component;
@@ -19,8 +30,6 @@ import org.noear.solon.core.handle.Context;
 import org.noear.solon.core.handle.DownloadedFile;
 import org.noear.solon.core.handle.ModelAndView;
 import org.noear.solon.core.handle.UploadedFile;
-import org.noear.solon.extend.sqltoy.annotation.Db;
-import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 
 import java.io.*;
 import java.net.URLEncoder;
@@ -49,23 +58,111 @@ public class FileServiceImpl implements FileService {
     @Inject
     UserDao userDao;
 
-    @Override
-    public Map<String, Object> upload(UploadedFile file, String curPos) {
+    @Inject
+    FileDao fileDao;
+
+    @Inject
+    DistributService distributService;
+
+    public Map<String, Object> recv(UploadedFile file, String curPos) {
         curPos = curPos.substring(1) + SLASH;
-        checkFileDir();
         String dir = curPos;
-        String username = (String) StpUtil.getLoginId();
-        // 判断是否是管理员用户，管理员可以访问其他用户文件夹
-        String fileDir = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
+        String fileDir = system.getFileDir() + SLASH + dir;
         // 文件原始名称
         String fileName = file.getName();
-        String suffix = fileName.substring(fileName.lastIndexOf(".") + 1);
-        String prefix = fileName.substring(0, fileName.lastIndexOf("."));
+        // 保存到磁盘
+        File outFile = FileUtil.file(fileDir + fileName);
+        try {
+            if (!outFile.getParentFile().exists()) {
+                outFile.getParentFile().mkdirs();
+            }
+            // 切换目录
+            file.transferTo(outFile);
+            log.debug("文件已保存: {}", outFile.getAbsoluteFile());
+            // 上传成功后，将文件发送到合适的数据节点
+            return getRS(200, "上传成功", outFile.getPath());
+        } catch (IOException e) {
+            log.debug(e.getMessage());
+            return getRS(500, e.getMessage());
+        }
+    }
+
+    @Override
+    public Map<String, Object> remoteDelDir(String dir) {
+        // 找到要删除文件的真实路径
+        String[] split = dir.split("/");
+        StringBuilder dirBuilder = new StringBuilder(SLASH);
+        for (int i = 0; i < split.length - 1; i++) {
+            dirBuilder.append(split[i]);
+        }
+        String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+        UserVO userVO = NodeUtil.toUser(userJson);
+        List<FileVO> dirByName = fileDao.getDirByName(dirBuilder.toString(), userVO.getUid());
+        if (ObjUtil.isNotEmpty(dirByName)) {
+            FileVO fileVO = dirByName.getFirst();
+            Long flag = 0L;
+            flag += deleteDir(fileVO);
+            if (flag > 0) {
+                fileDao.deleteDirByDirName(fileVO.getFname());
+                return ResUtil.getRS(200, "删除成功");
+            }
+        }
+        return ResUtil.getRS(500, "文件未找到");
+    }
+
+    /**
+     * 辅助递归删除文件夹
+     *
+     * @return
+     */
+    private Long deleteDir(FileVO dir) {
+        if (dir.getDir()) {
+            // 对于文件夹，先查看是否是空文件夹
+            String dirName = ObjUtil.equals(SLASH, dir.getParentPath()) ?
+                    dir.getParentPath() + dir.getViewPath()
+                    : dir.getParentPath() + SLASH + dir.getViewPath();
+            List<FileVO> files = fileDao.getFiles(dirName, dir.getUid());
+            if (ObjUtil.isNotEmpty(files)) {
+                for (FileVO file : files) {
+                    deleteDir(file);
+                }
+                return fileDao.deleteDirByDirName(dir.getFname());
+            } else {
+                // 空文件夹直接删除
+                return fileDao.deleteDirByDirName(dir.getFname());
+            }
+        } else {
+            // 不是文件夹直接删除
+            String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+            String realPath = dir.getRealPath();
+            HashMap<String, Object> param = new HashMap<>();
+            param.put("file", dir.getParentPath() + SLASH + dir.getFname());
+            param.put("user", userJson);
+            // 存入节点信息
+            param.put("who", "master");
+            String res = HttpUtil.post(realPath + "/api/del", param);
+            JSONObject resJson = JSON.parseObject(res);
+            if (ObjUtil.equals(resJson.get("code"), 200)) {
+                return fileDao.deleteDirByDirName(dir.getFname());
+            }
+        }
+        return 1L;
+    }
+
+
+    @Override
+    public Map<String, Object> upload(UploadedFile file, String curPos) {
+        String fileDir = system.getFileDir() + SLASH + curPos;
+        // 文件原始名称
+        String fileName = file.getName();
+        int endIndex = fileName.lastIndexOf(".");
+        String suffix = fileName.substring(endIndex + 1);
+        String prefix = fileName.substring(0, Math.max(endIndex, 0));
         // 保存到磁盘
         File outFile;
         String path;
         if (ObjUtil.isNotEmpty(system.getUuidName()) && system.getUuidName()) {
-            path = curPos + UUID.randomUUID().toString().replaceAll("-", "") + "." + suffix;
+            path = curPos + SLASH + UUID.randomUUID().toString().replaceAll("-", "") + fileName;
             outFile = FileUtil.file(fileDir + path);
         } else {
             int index = 1;
@@ -73,7 +170,7 @@ public class FileServiceImpl implements FileService {
             outFile = FileUtil.file(fileDir + fileName);
             // 防止文件名重复，以数字后缀重命名
             while (outFile.exists()) {
-                path = curPos + prefix + "(" + index + ")." + suffix;
+                path = prefix + "(" + index + ")." + suffix;
                 outFile = FileUtil.file(fileDir + path);
                 index++;
             }
@@ -84,8 +181,10 @@ public class FileServiceImpl implements FileService {
             }
             // 切换目录
             file.transferTo(outFile);
+            // 上传成功后，将文件发送到合适的数据节点
+            distributService.sendResource(outFile, curPos);
             Map<String, Object> rs = getRS(200, "上传成功", path);
-            // 生成缩略图
+            // 生成缩略图，缩略图保存在本地加速显示
             if (ObjUtil.isNotEmpty(system.getUseSm()) && system.getUseSm()) {
                 // 获取文件类型
                 String contentType = FileTypeUtil.getType(outFile);
@@ -102,6 +201,9 @@ public class FileServiceImpl implements FileService {
         } catch (IOException e) {
             log.debug(e.getMessage());
             return getRS(500, e.getMessage());
+        } finally {
+            log.debug("删除文件缓存: {}", outFile.getName());
+            FileUtil.del(outFile);
         }
         return null;
     }
@@ -109,6 +211,17 @@ public class FileServiceImpl implements FileService {
     @Override
     public ModelAndView file(String p, int d) {
         return getFile(p, d == 1, new ModelAndView());
+    }
+
+    @Override
+    public Map<String, Object> findRealPath(String fileName) {
+        String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+        UserVO user = NodeUtil.toUser(userJson);
+        List<FileVO> fileRealPath = fileDao.getFileRealPath(fileName, user.getUid());
+        if (ObjUtil.isNotEmpty(fileRealPath)) {
+            return ResUtil.getRS(200, fileRealPath.getFirst().getRealPath());
+        }
+        return ResUtil.getRS(500, "文件路径查找失败");
     }
 
     @Override
@@ -132,62 +245,48 @@ public class FileServiceImpl implements FileService {
         if (ObjUtil.isNotEmpty(exts)) {
             mExts = exts.split(",");
         }
-        checkFileDir();
         HashMap<String, Object> rs = new HashMap<>();
-        if (ObjUtil.isEmpty(dir) || SLASH.equals(dir)) {
-            dir = "";
-        } else if (dir.startsWith(SLASH)) {
-            dir = dir.substring(1);
-        }
         String username = (String) StpUtil.getLoginId();
-        // 判断是否是管理员用户，管理员可以访问其他用户文件夹
-        String path = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
-        File file = FileUtil.file(path);
-        File[] listFiles = file.listFiles();
-        ArrayList<Map<String, Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new LinkedList<>();
+        List<FileVO> listFiles;
+        UserVO userVO = NodeUtil.toUser(CacheUtil.get(username).toString());
+        listFiles = fileDao.getFileByUserId(dir, userVO.getUid());
         if (ObjUtil.isNotEmpty(listFiles)) {
-            for (File f : listFiles) {
-                if ("sm".equals(f.getName())) {
+            for (FileVO f : listFiles) {
+                if ("sm".equals(f.getFname())) {
                     continue;
                 }
                 HashMap<String, Object> m = new HashMap<>();
                 // 文件名称
-                m.put("name", f.getName());
+                m.put("name", f.getViewPath());
                 // 修改时间
-                m.put("updateTime", f.lastModified());
+                m.put("updateTime", f.getUpdateTime());
                 // 是否是目录
-                m.put("isDir", f.isDirectory());
-                if (f.isDirectory()) {
+                m.put("isDir", f.getDir());
+                if (f.getDir()) {
                     // 文件类型
                     m.put("type", "dir");
                 } else {
                     boolean flag = false;
-                    if (cn.lyxlz.fastfs.util.FileTypeUtil.canOnlinePreview(FileTypeUtil.getType(f))) {
+                    if (cn.lyxlz.fastfs.util.FileTypeUtil.canOnlinePreview(f.getFtype())) {
                         flag = true;
                     }
                     m.put("preview", flag);
                     // 文件地址
-                    m.put("url", (dir.isEmpty() ? dir : dir + SLASH) + f.getName());
+                    m.put("url", (dir.isEmpty() ? dir : dir + SLASH) + f.getFname());
                     // 获取文件类型
                     String contentType = null;
-                    String suffix = f.getName().substring(f.getName().lastIndexOf(".") + 1);
-                    contentType = FileTypeUtil.getType(f);
+                    String suffix = f.getFname().substring(f.getFname().lastIndexOf(".") + 1);
+                    contentType = f.getFtype();
                     if (accept != null && !accept.trim().isEmpty() && !accept.equals("file")) {
                         if (contentType == null || !contentType.startsWith(accept + SLASH)) {
                             continue;
-                        }
-                        if (ObjUtil.isNotEmpty(mExts)) {
-                            for (String ext : mExts) {
-                                if (!f.getName().endsWith("." + ext)) {
-                                    continue;
-                                }
-                            }
                         }
                     }
                     // 获取文件图标
                     m.put("type", getFileType(suffix, contentType));
                     // 是否有缩略图
-                    String smUrl = "sm/" + (dir.isEmpty() ? dir : (dir + SLASH)) + f.getName();
+                    String smUrl = "sm/" + (dir.isEmpty() ? dir : (dir + SLASH)) + f.getFname();
                     if (FileUtil.file(system.getFileDir() + smUrl).exists()) {
                         m.put("hasSm", true);
                         // 缩略图地址
@@ -199,8 +298,8 @@ public class FileServiceImpl implements FileService {
         }
         // 根据上传时间排序
         dataList.sort((o1, o2) -> {
-            Long l1 = (long) o1.get("updateTime");
-            Long l2 = (long) o2.get("updateTime");
+            Date l1 = (Date) o1.get("updateTime");
+            Date l2 = (Date) o2.get("updateTime");
             return l1.compareTo(l2);
         });
         // 把文件夹排在前面
@@ -217,13 +316,39 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public Map<String, Object> remoteDel(String file) {
+        // 找到要删除文件的真实路径
+        String[] fileS = file.split("/");
+        file = fileS[fileS.length - 1];
+        String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+        UserVO userVO = NodeUtil.toUser(userJson);
+        List<FileVO> fileByName = fileDao.getFileByName(file, userVO.getUid());
+        if (ObjUtil.isNotEmpty(fileByName)) {
+            FileVO fileVO = fileByName.getFirst();
+            HashMap<String, Object> param = new HashMap<>();
+            param.put("file", fileVO.getParentPath() + SLASH + fileVO.getFname());
+            param.put("user", userJson);
+            // 存入节点信息
+            param.put("who", "master");
+            String realPath = fileVO.getRealPath();
+            String res = HttpUtil.post(realPath + "/api/del", param);
+            JSONObject resJson = JSON.parseObject(res);
+            if (ObjUtil.equals(resJson.get("code"), 200)) {
+                // 删除成功将容量加回节点
+                String worker = CacheUtil.getKey(realPath);
+                NodeUtil.updateFree(worker, fileVO.getSize());
+                fileDao.deleteFileByFileName(file);
+            }
+            return ResUtil.getRS(Convert.toInt(resJson.get("code")), (String) resJson.get("msg"));
+        }
+        return ResUtil.getRS(500, "文件未找到");
+    }
+
+    @Override
     public Map<String, Object> del(String file) {
-        checkFileDir();
         if (file != null && !file.isEmpty()) {
-            String username = (String) StpUtil.getLoginId();
             String dir = "/";
-            // 判断是否是管理员用户，管理员可以访问其他用户文件夹
-            String fileDir = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + dir : system.getFileDir() + SLASH + username + SLASH + dir;
+            String fileDir = system.getFileDir() + SLASH + dir;
             File f = FileUtil.file(fileDir + file);
             File smF = FileUtil.file(fileDir + "sm/" + file);
             if (f.exists()) {
@@ -249,58 +374,88 @@ public class FileServiceImpl implements FileService {
         return getRS(500, "文件或目录删除失败");
     }
 
+
     @Override
-    public Map<String, Object> rename(String oldFile, String newFile) {
-        checkFileDir();
-        String username = (String) StpUtil.getLoginId();
-        String dir = "/";
-        String fileDir = system.getFileDir() + username + SLASH + dir;
-        if (StrUtil.isNotEmpty(oldFile) && StrUtil.isNotEmpty(newFile)) {
-            // 原文件
-            File f = FileUtil.file(fileDir + oldFile);
-            // 原文件缩略图
-            File smF = FileUtil.file(fileDir + "sm/" + oldFile);
-            // 新文件
-            File nFile = FileUtil.rename(f, fileDir + newFile, false);
-            if (nFile.exists()) {
-                if (smF.exists()) {
-                    // 新文件缩略图
-                    FileUtil.rename(smF, fileDir + "sm/" + newFile, false);
-                }
-                return getRS(200, "重命名成功", SLASH + newFile);
-            }
+    public Map<String, Object> rename(String parentPath, String oldFile, String newFile) {
+        oldFile = HtmlUtil.unescape(URLUtil.decode(oldFile));
+        newFile = HtmlUtil.unescape(URLUtil.decode(newFile));
+        if (oldFile.contains("/") || newFile.contains("/")
+                || oldFile.contains("\"") || newFile.contains("\"")
+                || oldFile.contains("'") || newFile.contains("'")) {
+            return ResUtil.getRS(500, "不可有特殊字符");
         }
-        return getRS(500, "重命名失败");
+        if (ObjUtil.equals(oldFile, newFile)) {
+            return ResUtil.getRS(500, "与原文件名相同");
+        }
+        Long l = fileDao.renameFileByFileName(oldFile, newFile);
+        if (l > 0) {
+            return ResUtil.getRS(200, "修改成功");
+        }
+        return ResUtil.getRS(500, "修改失败");
+    }
+
+    @Override
+    public Map<String, Object> renameDir(String parentPath, String oldFile, String newFile) {
+        oldFile = HtmlUtil.unescape(URLUtil.decode(oldFile));
+        newFile = HtmlUtil.unescape(URLUtil.decode(newFile));
+        if (oldFile.contains("/") || newFile.contains("/")
+                || oldFile.contains("\"") || newFile.contains("\"")
+                || oldFile.contains("'") || newFile.contains("'")) {
+            return ResUtil.getRS(500, "路径不可有特殊字符");
+        }
+        if (ObjUtil.equals(oldFile, newFile)) {
+            return ResUtil.getRS(500, "与原文件夹名相同");
+        }
+        Long l = fileDao.renameDirByDirName(oldFile, newFile);
+        if (l > 0) {
+            return ResUtil.getRS(200, "修改成功");
+        }
+        return ResUtil.getRS(500, "修改失败");
     }
 
     @Override
     public Map<String, Object> mkdir(String curPos, String dirName) {
-        checkFileDir();
-        if (StrUtil.isNotEmpty(curPos) && StrUtil.isNotEmpty(dirName)) {
-            curPos = curPos.substring(1);
-//            String dirPath = system.getFileDir() + curPos + SLASH + dirName;
-            String username = (String) StpUtil.getLoginId();
-            // 判断是否是管理员用户，管理员可以访问其他用户文件夹
-            String dirPath = ObjUtil.equals(username, system.getUname()) ? system.getFileDir() + SLASH + curPos + SLASH + dirName : system.getFileDir() + SLASH + username + SLASH + dirName;
-
-            File f = FileUtil.file(dirPath);
-            if (f.exists()) {
-                return getRS(500, "目录已存在");
-            }
-            if (FileUtil.mkdir(dirPath).exists()) {
-                return getRS(200, "创建成功");
-            }
+        dirName = HtmlUtil.unescape(URLUtil.decode(dirName));
+        if (dirName.contains("/") || dirName.contains("\"") || dirName.contains("\'")) {
+            return ResUtil.getRS(500, "路径不可有特殊字符");
+        }
+        String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+        UserVO user = NodeUtil.toUser(userJson);
+        dirName = UUID.randomUUID() + dirName;
+        Object mkdir = fileDao.mkdir(curPos, dirName, user.getUid());
+        if (ObjUtil.isNull(mkdir)) {
+            return getRS(500, "文件夹已存在");
+        }
+        if (ObjUtil.isNotEmpty(mkdir)) {
+            return getRS(200, "创建成功");
         }
         return getRS(500, "创建失败");
     }
 
     @Override
-    public Map<String, Object> share(String file, int time) {
-        String username = (String) StpUtil.getLoginId();
-        // 判断是否是管理员用户，管理员可以访问其他用户文件夹
-        String dir = "/";
-//        file = system.getFileDir() + username + SLASH + dir + SLASH + file;
-        file = ObjUtil.equals(username, system.getUname()) ? dir + SLASH + file : username + SLASH + file;
+    public Map<String, Object> remoteShare(String file, int time) {
+        // 查找file的realPath
+        String userJson = CacheUtil.get(StpUtil.getLoginId().toString()).toString();
+        UserVO user = NodeUtil.toUser(userJson);
+        List<FileVO> fileByName = fileDao.getFileByName(file, user.getUid());
+        if (ObjUtil.isNotEmpty(fileByName)) {
+            HashMap<String, Object> param = new HashMap<>();
+            FileVO fileVO = fileByName.getFirst();
+            param.put("user", userJson);
+            // 存入节点信息
+            param.put("who", "master");
+            param.put("file", file);
+            param.put("time", time);
+            String reqUrl = HttpTypeEnum.HTTP.getName() + fileVO.getRealPath() + "/api/share";
+            String res = HttpUtil.post(reqUrl, param);
+            JSONObject jsonObject = JSON.parseObject(res);
+            return ResUtil.getRS(Convert.toInt(jsonObject.get("code")), jsonObject.get("msg").toString(), jsonObject.get("url").toString());
+        }
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> share(String file, String user, int time) {
         // 若文件已经分享
         if (ObjUtil.isNotEmpty(CacheUtil.dataMap) &&
                 CacheUtil.dataMap.containsValue(file)) {
@@ -321,24 +476,28 @@ public class FileServiceImpl implements FileService {
                 }
             }
         }
-        checkFileDir();
-        String sid = java.util.UUID.randomUUID().toString();
-        CacheUtil.put(sid, file, time);
+        String sid = UUID.fastUUID().toString();
+        HashMap<String, Object> shareFile = new HashMap<>();
+        UserVO userVo = NodeUtil.toUser(user);
+        shareFile.put("file", file);
+        shareFile.put("username", userVo.getUname());
+        CacheUtil.put(sid, shareFile, time);
         return getRS(200, "分享成功", system.getDomain() + SLASH + "share?sid=" + sid);
     }
 
     @Override
     public ModelAndView sharePage(String sid) {
         ModelAndView modelAndView = new ModelAndView();
-        modelAndView.put("username", (String) StpUtil.getLoginId());
         if (ObjUtil.isNotEmpty(CacheUtil.dataMap) &&
                 CacheUtil.dataMap.containsKey(sid)) {
             // 是否在有效期内
             Date expireDate = CacheUtil.dataExpireMap.get(sid);
             if (expireDate != null && expireDate.compareTo(new Date()) > 0) {
-                String url = (String) CacheUtil.get(sid);
+                HashMap<String, Object> shareFile = (HashMap<String, Object>) CacheUtil.get(sid);
                 // 文件是否存在
-                File existFile = new File(system.getFileDir() + SLASH + url);
+                String url = shareFile.get("file").toString();
+                log.debug("分享文件:{}", url);
+                File existFile = FileUtil.file(system.getFileDir() + SLASH + url);
                 if (!existFile.exists()) {
                     modelAndView.put("exists", false);
                     modelAndView.put("msg", "该文件已不存在~");
@@ -351,6 +510,7 @@ public class FileServiceImpl implements FileService {
                 contentType = FileTypeUtil.getType(existFile);
                 // 获取文件图标、文件名、图片文件缩略图片地址、过期时间
                 modelAndView.put("sid", sid);
+                modelAndView.put("username", shareFile.get("username"));
                 modelAndView.put("type", getFileType(suffix, contentType));
                 modelAndView.put("exists", true);
                 modelAndView.put("fileName", url.substring(url.lastIndexOf('/') + 1));
@@ -375,17 +535,6 @@ public class FileServiceImpl implements FileService {
         return modelAndView;
     }
 
-    /**
-     * 检查文件目录属性是否正确
-     */
-    private void checkFileDir() {
-        if (system.getFileDir() == null) {
-            system.setFileDir(SLASH);
-        }
-        if (!system.getFileDir().endsWith(SLASH)) {
-            system.setFileDir(system.getFileDir() + SLASH);
-        }
-    }
 
     /**
      * 获取当前日期
@@ -425,11 +574,7 @@ public class FileServiceImpl implements FileService {
         if (system.getUseNginx()) {
             return useNginx(p, modelAndView);
         }
-        checkFileDir();
-        if (p.startsWith(system.getUname())) {
-            p = p.replaceFirst(system.getUname(), "");
-        }
-        outputFile(system.getFileDir() + p, download, modelAndView);
+        outputFile(p, download, modelAndView);
         return null;
     }
 
@@ -443,14 +588,17 @@ public class FileServiceImpl implements FileService {
      */
     private ModelAndView returnShareFileOrSm(String sid, boolean download, ModelAndView modelAndView) {
         String url = null;
+        String username = null;
         if (!CacheUtil.dataMap.isEmpty()) {
             if (CacheUtil.dataMap.containsKey(sid)) {
                 // 是否在有效期内
                 Date expireDate = CacheUtil.dataExpireMap.get(sid);
                 if (expireDate != null && expireDate.compareTo(new Date()) > 0) {
-                    url = (String) CacheUtil.get(sid);
+                    Map<String, Object> shareFile = (Map<String, Object>) CacheUtil.get(sid);
+                    url = shareFile.get("file").toString();
+                    username = shareFile.get("username").toString();
                     // 文件是否存在
-                    File existFile = new File(system.getFileDir() + SLASH + url);
+                    File existFile = FileUtil.file(system.getFileDir() + SLASH + url);
                     if (!existFile.exists()) {
                         modelAndView.view("error.html");
                         modelAndView.put("msg", "该文件已不存在~");
@@ -467,6 +615,8 @@ public class FileServiceImpl implements FileService {
                 return modelAndView;
             }
         }
+        // 为了和下载文件的请求参数统一
+        url = username + "/" + url;
         return getFile(url, download, modelAndView);
     }
 
@@ -479,7 +629,14 @@ public class FileServiceImpl implements FileService {
      */
     private ModelAndView outputFile(String file, boolean download, ModelAndView modelAndView) {
         // 判断文件是否存在
-        File inFile = FileUtil.file(file);
+        String uname = file.split("/")[0];
+        List<UserVO> user = userDao.getUser(uname);
+        List<FileVO> fileByName = fileDao.getFileByName(file.replace(uname + "/", ""), user.getFirst().getUid());
+        if (ObjUtil.isNotEmpty(fileByName)) {
+            file = fileByName.getFirst().getParentPath() + SLASH + fileByName.getFirst().getFname();
+        }
+        log.debug("下载文件: {}", system.getFileDir() + file);
+        File inFile = FileUtil.file(system.getFileDir() + file);
         // 文件不存在
         if (!inFile.exists()) {
             modelAndView.put("Content-Type", "text/html;charset=UTF-8");

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.noear.solon.annotation.*;
 import org.noear.solon.core.handle.ModelAndView;
 import org.noear.solon.core.handle.UploadedFile;
+import org.sagacity.sqltoy.config.annotation.OneToMany;
 
 import java.sql.SQLException;
 import java.util.Map;
@@ -28,9 +29,30 @@ public class FileController {
 
     @Post
     @Login
+    @Mapping("/file/recv")
+    public Map<String, Object> recv(UploadedFile file, String curPos) {
+        return fileService.recv(file, curPos);
+    }
+
+    @Post
+    @Login
     @Mapping("/file/upload")
     public Map<String, Object> upload(UploadedFile file, String curPos) {
         return fileService.upload(file, curPos);
+    }
+
+    @Get
+    @Login
+    @Mapping("/upload")
+    public ModelAndView uploadPage() {
+        return new ModelAndView().view("upload.html");
+    }
+
+    @Get
+    @Login
+    @Mapping("/file/findRealPath")
+    public Map<String, Object> findRealPath(String f) {
+        return fileService.findRealPath(f);
     }
 
     @Get
@@ -41,21 +63,18 @@ public class FileController {
     }
 
     @Get
-    @Login
     @Mapping("/file")
     public ModelAndView file(String p, int d) {
         return fileService.file(p, d);
     }
 
     @Get
-    @Login
     @Mapping("/share/file")
     public ModelAndView shareFile(String sid, int d) {
         return fileService.shareFile(sid, d);
     }
 
     @Get
-    @Login
     @Mapping("/share/file/sm")
     public ModelAndView shareFileSm(String sid) {
         return fileService.shareFileSm(sid);
@@ -78,26 +97,50 @@ public class FileController {
     @Post
     @Login
     @Mapping("/api/share")
-    public Map<String, Object> share(String file, int time) {
-        return fileService.share(file, time);
+    public Map<String, Object> share(String file, String user, int time) {
+        return fileService.share(file, user, time);
+    }
+
+    @Post
+    @Mapping("/api/remoteShare")
+    public Map<String, Object> remoteShare(String file, int time) {
+        return fileService.remoteShare(file, time);
     }
 
     @Get
-    @Login
     @Mapping("/share")
     public ModelAndView sharePage(String sid) {
         return fileService.sharePage(sid);
     }
 
     @Get
+    @Mapping("/api/remoteDel")
+    public Map<String, Object> remoteDel(String file) {
+        return fileService.remoteDel(file);
+    }
+
+    @Get
+    @Mapping("/api/remoteDelDir")
+    public Map<String, Object> remoteDelDir(String dirName) {
+        return fileService.remoteDelDir(dirName);
+    }
+
+    @Get
+    @Mapping("/api/rename")
+    public Map<String, Object> rename(String parentPath, String oldFile, String newFile) {
+        return fileService.rename(parentPath, oldFile, newFile);
+    }
+
+    @Get
+    @Mapping("/api/renameDir")
+    public Map<String, Object> renameDir(String parentPath, String oldFile, String newFile) {
+        return fileService.renameDir(parentPath, oldFile, newFile);
+    }
+
+    @Post
     @Mapping("/api/del")
     public Map<String, Object> del(String file) {
         return fileService.del(file);
     }
 
-    @Get
-    @Mapping("/api/rename")
-    public Map<String, Object> rename(String oldFile, String newFile) {
-        return fileService.rename(oldFile, newFile);
-    }
 }

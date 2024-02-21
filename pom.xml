@@ -7,7 +7,7 @@
     <groupId>cn.lyxlz.fastfs</groupId>
     <artifactId>fastfs</artifactId>
     <version>1.0</version>
-    
+
     <packaging>jar</packaging>
 
     <description>轻量级云存储系统</description>
@@ -18,7 +18,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <java.version>21</java.version>
-        <hutool.version>5.8.21</hutool.version>
+        <hutool.version>5.8.25</hutool.version>
         <lombok.version>1.18.30</lombok.version>
         <thumbnailator.version>0.4.20</thumbnailator.version>
         <mysql-connector-j.version>8.1.0</mysql-connector-j.version>
@@ -29,7 +29,7 @@
         <groupId>org.noear</groupId>
         <artifactId>solon-parent</artifactId>
         <version>2.6.0</version>
-        <relativePath />
+        <relativePath/>
     </parent>
 
     <dependencies>
@@ -48,7 +48,18 @@
                     <groupId>org.noear</groupId>
                     <artifactId>solon.boot.jlhttp</artifactId>
                 </exclusion>
+                <!--排除默认的json解析器-->
+                <exclusion>
+                    <groupId>org.noear</groupId>
+                    <artifactId>solon.serialization.snack3</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+
+        <!--fastjson2-->
+        <dependency>
+            <groupId>org.noear</groupId>
+            <artifactId>solon.serialization.fastjson2</artifactId>
         </dependency>
 
         <!--smarthttp 嵌入式http服务器-->
@@ -75,6 +86,7 @@
             <artifactId>sqltoy-solon-plugin</artifactId>
         </dependency>
 
+        <!--线程池-->
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
@@ -86,6 +98,12 @@
             <groupId>org.noear</groupId>
             <artifactId>solon-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!--Solon定时任务框架-->
+        <dependency>
+            <groupId>org.noear</groupId>
+            <artifactId>solon.scheduling.simple</artifactId>
         </dependency>
 
         <!--sa-token 权限管理框架-->
@@ -101,12 +119,25 @@
             <version>${hutool.version}</version>
         </dependency>
 
-        <!--Hutool 数据工具类-->
-<!--        <dependency>
+        <!--Hutool HTTP请求工具类-->
+        <dependency>
             <groupId>cn.hutool</groupId>
-            <artifactId>hutool-db</artifactId>
+            <artifactId>hutool-http</artifactId>
             <version>${hutool.version}</version>
-        </dependency>-->
+        </dependency>
+
+        <!--国密算法依赖-->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15to18</artifactId>
+            <version>1.69</version>
+        </dependency>
+        <!--Hutool 基础工具类-->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-crypto</artifactId>
+            <version>${hutool.version}</version>
+        </dependency>
 
         <!-- google处理图片工具包 -->
         <dependency>
@@ -115,11 +146,11 @@
             <version>${thumbnailator.version}</version>
         </dependency>
 
-        <!--mysql 连接驱动-->
+        <!--postgresql 连接驱动-->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>${mysql-connector-j.version}</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.1</version>
         </dependency>
 
         <!--lombok-->
@@ -131,8 +162,6 @@
 
     </dependencies>
 
-
-    <!-- 主菜是这里： -->
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
@@ -158,15 +187,15 @@
             </plugin>
         </plugins>
     </build>
-    
-    <repositories>		
+
+    <repositories>
         <repository>
-			<id>tencent</id>
-			<url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
+            <id>tencent</id>
+            <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
 </project>

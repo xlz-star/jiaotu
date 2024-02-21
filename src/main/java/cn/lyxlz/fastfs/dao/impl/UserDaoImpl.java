@@ -1,9 +1,8 @@
 package cn.lyxlz.fastfs.dao.impl;
 
 import cn.lyxlz.fastfs.dao.UserDao;
-import cn.lyxlz.fastfs.entity.User;
+import cn.lyxlz.fastfs.entity.UserVO;
 import org.noear.solon.annotation.Component;
-import org.noear.solon.annotation.Inject;
 import org.noear.solon.extend.sqltoy.annotation.Db;
 import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.sagacity.sqltoy.model.EntityQuery;
@@ -17,15 +16,20 @@ public class UserDaoImpl implements UserDao {
     SqlToyLazyDao dao;
 
     @Override
-    public List<User> getUser(User user) {
+    public List<UserVO> getUser(UserVO user) {
         String uname = user.getUname();
-        String pwd = user.getPwd();
-        return dao.findEntity(User.class,
+        String pwd = user.getPasswd();
+        return dao.findEntity(UserVO.class,
                 EntityQuery.create().where("#[uname = ?] #[ and passwd = ?]").values(uname, pwd));
     }
 
+    public List<UserVO> getUser(String uname) {
+        return dao.findEntity(UserVO.class,
+                EntityQuery.create().where("#[uname = ?]").values(uname));
+    }
+
     @Override
-    public Integer saveUser(User user) {
-        return (Integer) dao.save(user);
+    public Object saveUser(UserVO user) {
+        return dao.save(user);
     }
 }

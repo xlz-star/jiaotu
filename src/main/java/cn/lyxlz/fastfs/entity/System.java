@@ -3,6 +3,8 @@ package cn.lyxlz.fastfs.entity;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.List;
+
 /**
  * 系统配置实体
  *
@@ -25,7 +27,7 @@ public class System {
     private Boolean uuidName;
 
     /**
-     * 是否使用sm
+     * 是否使用缩略图
      */
     private Boolean useSm;
 
@@ -54,4 +56,10 @@ public class System {
      */
     private String domain;
 
+    /**
+     * 是否是主节点
+     */
+    private Boolean master;
+
+    private List<String> works;
 }

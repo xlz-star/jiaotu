@@ -18,15 +18,15 @@ import java.sql.Types;
 @Data
 @Accessors(chain = true)
 @Entity(tableName = "public.user")
-public class UserPO implements Serializable {
+public class UserVO implements Serializable {
     private static final long serialVersionUID = -5120346456991155896L;
 
     /**
      * 用户id
      */
     @Id
-    @Column(name = "uid", type = Types.INTEGER)
-    private Integer uid;
+    @Column(name = "uid", type = Types.VARCHAR)
+    private String uid;
 
     /**
      * 账户
@@ -43,7 +43,7 @@ public class UserPO implements Serializable {
     /**
      * 用户身份
      */
-    @Column(name = "identify", type = Types.INTEGER)
-    private Integer identify;
+    @Column(name = "identity", type = Types.INTEGER)
+    private Integer identity;
 
 }

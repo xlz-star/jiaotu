@@ -1,5 +1,6 @@
 package cn.lyxlz.fastfs.util;
 
+import cn.hutool.core.map.BiMap;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Date;
@@ -15,10 +16,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class CacheUtil {
 
-    /** 数据缓存map */
-    public static Map<String, Object> dataMap = new ConcurrentHashMap<>();
+    /**
+     * 数据缓存map
+     */
+    public static BiMap<String, Object> dataMap = new BiMap<>(new ConcurrentHashMap<>());
 
-    /** 数据缓存过期map */
+
+    /**
+     * 数据缓存过期map
+     */
     public static Map<String, Date> dataExpireMap = new ConcurrentHashMap<>();
 
     /**
@@ -30,7 +36,6 @@ public class CacheUtil {
      */
     public static void put(String key, Object val, int expireMiute) {
         dataMap.put(key, val);
-        log.debug("当前缓存 : {}", dataMap);
         dataExpireMap.put(key, addMinutes(expireMiute));
     }
 
@@ -49,17 +54,30 @@ public class CacheUtil {
         return obj;
     }
 
+    public static String getKey(Object cacheValue) {
+        return dataMap.getKey(cacheValue);
+    }
+
     /**
      * 将有效时间(分钟)转成日期
      *
      * @param expireMiute
      * @return Date
      */
-    public static Date addMinutes(int expireMiute){
+    public static Date addMinutes(int expireMiute) {
         long currentTime = System.currentTimeMillis();
         currentTime += expireMiute * 1000 * 60;
         Date date = new Date(currentTime);
         return date;
     }
 
+    /**
+     * 删除缓存中过期的数据
+     *
+     * @param key
+     */
+    public static void remove(Object key) {
+        CacheUtil.dataMap.remove(key);
+        CacheUtil.dataExpireMap.remove(key);
+    }
 }

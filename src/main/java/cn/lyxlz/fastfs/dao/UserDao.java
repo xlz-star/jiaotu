@@ -1,6 +1,6 @@
 package cn.lyxlz.fastfs.dao;
 
-import cn.lyxlz.fastfs.entity.User;
+import cn.lyxlz.fastfs.entity.UserVO;
 
 import java.util.List;
 
@@ -14,9 +14,17 @@ public interface UserDao {
      * 获取用户信息
      *
      * @param user
-     * @return {@link List}<{@link User}>
+     * @return {@link List}<{@link UserVO}>
      */
-    List<User> getUser(User user);
+    List<UserVO> getUser(UserVO user);
+
+    /**
+     * 获取用户信息
+     *
+     * @param uname
+     * @return
+     */
+    List<UserVO> getUser(String uname);
 
     /**
      * 保存用户信息
@@ -24,5 +32,5 @@ public interface UserDao {
      * @param user
      * @return {@link Integer}
      */
-    Integer saveUser(User user);
+    Object saveUser(UserVO user);
 }

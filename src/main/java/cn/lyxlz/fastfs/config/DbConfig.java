@@ -6,7 +6,6 @@ import org.noear.solon.annotation.Configuration;
 import org.noear.solon.annotation.Inject;
 
 import javax.sql.DataSource;
-
 @Configuration
 public class DbConfig {
     /**
