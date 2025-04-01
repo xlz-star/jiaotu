@@ -4,7 +4,6 @@ import cn.lyxlz.fastfs.annotation.Login;
 import cn.lyxlz.fastfs.entity.UserVO;
 import cn.lyxlz.fastfs.service.LoginService;
 import org.noear.solon.annotation.*;
-import org.noear.solon.core.handle.Context;
 import org.noear.solon.core.handle.ModelAndView;
 
 import java.util.Map;
@@ -59,5 +58,11 @@ public class LoginController {
     @Login
     public ModelAndView loginOut() {
         return loginService.loginOut();
+    }
+
+    @Get
+    @Mapping("/404")
+    public ModelAndView notFound() {
+        return new ModelAndView("404.html");
     }
 }

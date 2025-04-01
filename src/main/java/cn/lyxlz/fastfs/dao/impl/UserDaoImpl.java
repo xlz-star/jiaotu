@@ -3,9 +3,9 @@ package cn.lyxlz.fastfs.dao.impl;
 import cn.lyxlz.fastfs.dao.UserDao;
 import cn.lyxlz.fastfs.entity.UserVO;
 import org.noear.solon.annotation.Component;
-import org.noear.solon.extend.sqltoy.annotation.Db;
 import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.sagacity.sqltoy.model.EntityQuery;
+import org.sagacity.sqltoy.solon.annotation.Db;
 
 import java.util.List;
 

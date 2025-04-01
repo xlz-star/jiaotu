@@ -4,17 +4,15 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
 import cn.lyxlz.fastfs.dao.FileDao;
-import cn.lyxlz.fastfs.dao.UserDao;
 import cn.lyxlz.fastfs.entity.FileVO;
 import cn.lyxlz.fastfs.entity.UserVO;
 import cn.lyxlz.fastfs.util.CacheUtil;
 import cn.lyxlz.fastfs.util.NodeUtil;
 import org.noear.solon.annotation.Component;
-import org.noear.solon.annotation.Inject;
 import org.noear.solon.data.annotation.Tran;
-import org.noear.solon.extend.sqltoy.annotation.Db;
-import org.sagacity.sqltoy.dao.SqlToyLazyDao;
+import org.sagacity.sqltoy.dao.LightDao;
 import org.sagacity.sqltoy.model.EntityQuery;
+import org.sagacity.sqltoy.solon.annotation.Db;
 
 import java.sql.Date;
 import java.util.List;
@@ -25,7 +23,15 @@ import static cn.lyxlz.fastfs.service.FileService.SLASH;
 @Component
 public class FileDaoImpl implements FileDao {
     @Db
-    SqlToyLazyDao dao;
+    LightDao dao;
+
+    @Override
+    public List<FileVO> getFileByLike(String fileName, String uid) {
+        return dao.findEntity(FileVO.class,
+                EntityQuery.create()
+                        .where("#[fname like ?] #[ and uid = ?]")
+                        .values(fileName, uid));
+    }
 
     @Override
     public List<FileVO> getFileRealPath(String fileName, String uid) {

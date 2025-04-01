@@ -32,6 +32,17 @@
             </span>
             <div class="layui-card-body">
                 <div class="btnDiv">
+                    <!-- 搜索文件输入框和按钮 -->
+                    <div class="layui-input-group">
+                        <div class="layui-input-prefix">
+                            搜索文件
+                        </div>
+                        <input type="text" id="searchInput" placeholder="搜索文件名" class="layui-input">
+                        <div class="layui-input-split layui-input-suffix" style="cursor: pointer;">
+                            <i class="layui-icon layui-icon-search" id="searchBtn"></i>
+                        </div>
+                    </div>
+                    <br>
                     <button id="btnBack" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i
                             class="layui-icon">&#xe65c;</i>返回上级
                     </button>
@@ -107,6 +118,17 @@
         var layer = layui.layer;
         var upload = layui.upload;
         var laytpl = layui.laytpl;
+
+        // 搜索功能
+        $('#searchBtn').click(function () {
+            var fileName = $('#searchInput').val();
+            if (fileName.trim() === '') {
+                layer.msg('请输入文件名', {icon: 2});
+                return;
+            }
+            layer.load(2);
+            window.location.href = '/search?fileName=' + fileName;
+        });
 
         // 渲染文件列表
         function renderList(dir) {

@@ -17,7 +17,7 @@
             <img src="/images/logo.png"/><cite><span><a href="/">狡兔FS</a></span></cite>
         </div>
     </div>
-
+    <div style="display: none" class="file_name" th:text="${fileName}"></div>
 </div>
 
 <div class="layui-container" style="padding-top: 15px;">
@@ -32,35 +32,24 @@
             </span>
             <div class="layui-card-body">
                 <div class="btnDiv">
-                    <!-- 搜索文件输入框和按钮 -->
-                    <div class="layui-input-group">
-                        <div class="layui-input-prefix">
-                            搜索文件
-                        </div>
-                        <input type="text" id="searchInput" placeholder="搜索文件名" class="layui-input">
-                        <div class="layui-input-split layui-input-suffix" style="cursor: pointer;">
-                            <i class="layui-icon layui-icon-search" id="searchBtn"></i>
-                        </div>
-                    </div>
-                    <br>
                     <button id="btnBack" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i
-                            class="layui-icon">&#xe65c;</i>返回上级
+                            class="layui-icon">&#xe65c;</i>返回首页
                     </button>
-                    <button id="btnRefresh" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i
-                            class="layui-icon">&#xe669;</i>刷新
-                    </button>
-                    <button id="btnUpload" class="layui-btn layui-btn-sm layui-btn-normal icon-btn"><i
-                            class="layui-icon">&#xe681;</i>上传文件
-                    </button>
-                    <button id="btnNewDir" class="layui-btn layui-btn-sm layui-btn-normal icon-btn"><i
-                            class="layui-icon layui-icon-add-circle"></i>新建文件夹
-                    </button>
-                    <button id="btnDelDir" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i
-                            class="layui-icon layui-icon-delete"></i>刪除目录
-                    </button>
-                    <button id="btnRname" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i
-                            class="layui-icon layui-icon-edit"></i>重命名目录
-                    </button>
+<!--                    <button id="btnRefresh" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i-->
+<!--                            class="layui-icon">&#xe669;</i>刷新-->
+<!--                    </button>-->
+<!--                    <button id="btnUpload" class="layui-btn layui-btn-sm layui-btn-normal icon-btn"><i-->
+<!--                            class="layui-icon">&#xe681;</i>上传文件-->
+<!--                    </button>-->
+<!--                    <button id="btnNewDir" class="layui-btn layui-btn-sm layui-btn-normal icon-btn"><i-->
+<!--                            class="layui-icon layui-icon-add-circle"></i>新建文件夹-->
+<!--                    </button>-->
+<!--                    <button id="btnDelDir" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i-->
+<!--                            class="layui-icon layui-icon-delete"></i>刪除目录-->
+<!--                    </button>-->
+<!--                    <button id="btnRname" class="layui-btn layui-btn-sm layui-btn-primary icon-btn"><i-->
+<!--                            class="layui-icon layui-icon-edit"></i>重命名目录-->
+<!--                    </button>-->
                 </div>
 
                 <div class="file-list"></div>
@@ -119,19 +108,8 @@
         var upload = layui.upload;
         var laytpl = layui.laytpl;
 
-        // 搜索功能
-        $('#searchBtn').click(function () {
-            var fileName = $('#searchInput').val();
-            if (fileName.trim() === '') {
-                layer.msg('请输入文件名', {icon: 2});
-                return;
-            }
-            layer.load(2);
-            window.location.href = '/search?fileName=' + fileName;
-        });
-
         // 渲染文件列表
-        function renderList(dir) {
+        function renderList(file_name) {
             if ($('#tvFP').text() == '/') {
                 $('#btnDelDir').hide();
                 $('#btnRname').hide();
@@ -139,12 +117,12 @@
                 $('#btnDelDir').show();
                 $('#btnRname').show();
             }
-            if (!dir) {
-                dir = $('#tvFP').text();
+            if (!file_name) {
+                file_name = $('.file_name').text();
             }
             layer.load(2);
-            $.get(baseServer + 'api/list', {
-                dir: dir
+            $.get(baseServer + 'api/search', {
+                fileName: file_name
             }, function (res) {
                 layer.closeAll('loading');
                 if (res.code === 200) {
@@ -171,7 +149,7 @@
             });
         }
 
-        renderList();
+        renderList($("#file_name").text());
 
         // 上传文件事件
         $("#btnUpload").click(function () {
@@ -230,17 +208,7 @@
 
         // 返回上级
         $('#btnBack').click(function () {
-            var cDir = $('#tvFP').text();
-            if (cDir == '/') {
-                layer.msg('已经是根目录')
-            } else {
-                cDir = cDir.substring(0, cDir.lastIndexOf('/'));
-                if (!cDir) {
-                    cDir = '/';
-                }
-                $('#tvFP').text(cDir);
-                renderList(cDir);
-            }
+            window.location.href = baseServer
         });
 
         // 点击空白隐藏下拉框

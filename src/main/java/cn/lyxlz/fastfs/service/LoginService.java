@@ -16,7 +16,6 @@ public interface LoginService {
     /**
      * 首页访问
      *
-     * @param ctx
      * @return
      */
     ModelAndView index();

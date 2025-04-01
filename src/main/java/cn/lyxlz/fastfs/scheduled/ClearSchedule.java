@@ -8,10 +8,10 @@ import cn.lyxlz.fastfs.service.FileService;
 import lombok.extern.slf4j.Slf4j;
 import org.noear.solon.annotation.Component;
 import org.noear.solon.annotation.Inject;
-import org.noear.solon.extend.sqltoy.annotation.Db;
 import org.noear.solon.scheduling.annotation.Scheduled;
 import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.sagacity.sqltoy.model.EntityQuery;
+import org.sagacity.sqltoy.solon.annotation.Db;
 
 import java.io.IOException;
 import java.nio.file.Files;

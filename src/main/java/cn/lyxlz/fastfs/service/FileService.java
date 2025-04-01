@@ -6,6 +6,7 @@ import org.noear.solon.core.handle.UploadedFile;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,6 +17,14 @@ import java.util.Map;
  */
 public interface FileService {
     String SLASH = "/";
+
+    /**
+     * 搜索文件
+     * @param fileName
+     * @return
+     */
+   Map<String, Object> search(String fileName, String dir, String accept, String exts);
+
 
     /**
      * 处理主节点发来的文件

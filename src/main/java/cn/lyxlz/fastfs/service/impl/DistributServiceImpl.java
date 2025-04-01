@@ -56,10 +56,7 @@ public class DistributServiceImpl implements DistributService {
         // 只有主节点需要进行主机发现
         List<String> works = system.getWorks();
         for (String work : works) {
-            String workerUrl = HttpTypeEnum.HTTP.getName() + work + "/info";
-            String res = HttpUtil.get(workerUrl);
-            // 解析json，获取msg字段
-            String nodeJson = JSON.parseObject(res).get("msg").toString();
+            String nodeJson = NodeUtil.toJson(node);
             Node node = NodeUtil.toNode(nodeJson);
             // 查看节点是否已保存
             boolean containsNode = NodeUtil.containsNode(node);

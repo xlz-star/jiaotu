@@ -2,6 +2,7 @@ package cn.lyxlz.fastfs.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.lyxlz.fastfs.annotation.Login;
+import cn.lyxlz.fastfs.annotation.Waf;
 import cn.lyxlz.fastfs.service.FileService;
 import cn.lyxlz.fastfs.service.impl.FileServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.noear.solon.core.handle.UploadedFile;
 import org.sagacity.sqltoy.config.annotation.OneToMany;
 
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 
 @Controller
@@ -22,8 +24,16 @@ public class FileController {
 
     @Get
     @Login
+    @Mapping("/api/search")
+    public Map<String, Object> search(String fileName, String dir, String accept, String exts) {
+        return fileService.search(fileName, dir, accept, exts);
+    }
+
+    @Get
+    @Login
     @Mapping("/")
     public ModelAndView index(ModelAndView modelAndView) {
+        modelAndView.put("username", StpUtil.getLoginId().toString());
         return modelAndView.view("index.html");
     }
 
@@ -50,6 +60,16 @@ public class FileController {
 
     @Get
     @Login
+    @Mapping("/search")
+    public ModelAndView searchPage(String fileName) {
+        HashMap<String, String> model = new HashMap<>();
+        model.put("fileName", fileName);
+        model.put("username", StpUtil.getLoginId().toString());
+        return new ModelAndView("search.html", model);
+    }
+
+    @Get
+    @Login
     @Mapping("/file/findRealPath")
     public Map<String, Object> findRealPath(String f) {
         return fileService.findRealPath(f);
@@ -57,6 +77,7 @@ public class FileController {
 
     @Get
     @Login
+    @Waf
     @Mapping("/api/list")
     public Map<String, Object> list(String dir, String accept, String exts) throws SQLException {
         return fileService.list(dir, accept, exts);

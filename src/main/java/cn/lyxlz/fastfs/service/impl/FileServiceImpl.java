@@ -22,6 +22,7 @@ import cn.lyxlz.fastfs.util.NodeUtil;
 import cn.lyxlz.fastfs.util.ResUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.noear.solon.annotation.Component;
@@ -37,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static cn.lyxlz.fastfs.util.ResUtil.*;
 
@@ -63,6 +65,22 @@ public class FileServiceImpl implements FileService {
 
     @Inject
     DistributService distributService;
+
+    @SneakyThrows
+    @Override
+    public Map<String, Object> search(String fileName, String dir, String accept, String exts) {
+        Map<String, Object> list = list("/", accept, exts);
+        if (!((int) list.get("code") == 200)) {
+            return list;
+        }
+        List<Map<String, Object>> data = (List<Map<String, Object>>) list.get("data");
+        // 使用Steam流过滤出文件名中包含指定字符的文件
+        List<Map<String, Object>> filteredData = data.stream()
+                .filter(item -> item.get("name").toString().contains(fileName))
+                .toList();
+        list.put("data", filteredData);
+        return list;
+    }
 
     public Map<String, Object> recv(UploadedFile file, String curPos) {
         curPos = curPos.substring(1) + SLASH;
@@ -201,9 +219,6 @@ public class FileServiceImpl implements FileService {
         } catch (IOException e) {
             log.debug(e.getMessage());
             return getRS(500, e.getMessage());
-        } finally {
-            log.debug("删除文件缓存: {}", outFile.getName());
-            FileUtil.del(outFile);
         }
         return null;
     }

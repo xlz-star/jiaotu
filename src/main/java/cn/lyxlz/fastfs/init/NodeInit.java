@@ -1,7 +1,6 @@
 package cn.lyxlz.fastfs.init;
 
 import cn.hutool.core.util.ObjUtil;
-import cn.lyxlz.fastfs.dao.FileDao;
 import cn.lyxlz.fastfs.entity.FileVO;
 import cn.lyxlz.fastfs.entity.Node;
 import cn.lyxlz.fastfs.service.DistributService;
@@ -12,9 +11,9 @@ import org.noear.solon.annotation.Component;
 import org.noear.solon.annotation.Inject;
 import org.noear.solon.core.event.AppLoadEndEvent;
 import org.noear.solon.core.event.EventListener;
-import org.noear.solon.extend.sqltoy.annotation.Db;
 import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.sagacity.sqltoy.model.EntityQuery;
+import org.sagacity.sqltoy.solon.annotation.Db;
 
 import java.util.List;
 

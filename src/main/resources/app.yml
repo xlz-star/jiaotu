@@ -4,21 +4,30 @@ server:
   request:
     maxFileSize: 2048mb
 
-solon.app:
-  name: 'fast-fs'
-  group: 'fs'
-
-# 日志配置
-solon.logging.appender:
-  console:
-    level: DEBUG
+solon:
+  app:
+    name: 'fast-fs'
+    group: 'fs'
+  # 启用虚拟线程
+  threads:
+    virtual.enabled: true
+  # 日志配置
+  logging:
+  appender:
+    console:
+      level: DEBUG
+    logger:
+      "com.zaxxer.hikari": WARN
+      "c.z.h.p.HikariPool": WARN
+    file:
+      level: INFO
 
 # sqltoy 数据源
 datasource:
   driver-class-name: org.postgresql.Driver
   username: xlz
   password: xlz342601
-  jdbcUrl: jdbc:postgresql://101.43.65.9:5432/fastfs?useSSL=false&useUnicode=true&characterEncoding=UTF-8
+  jdbcUrl: jdbc:postgresql://14.103.149.20:5432/fastfs?useSSL=false&useUnicode=true&characterEncoding=UTF-8
 
 
 
@@ -31,12 +40,12 @@ fs:
   nginxUrl: http://localhost:80/
   master: true
   works:
-    - 172.31.227.99:8081
-#    - 106.13.1.173:41198
+    - 127.0.0.1:8080
   node:
     nodeName: master
     total: 20G
-
+  useWaf: false
+  wafUrl: http://localhost:8000/predict/
 
 # admin账户配置
 admin.uname: admin

@@ -29,7 +29,9 @@ public class SystemConfig {
             @Inject("${admin.uname}") String uname,
             @Inject("${admin.pwd}") String pwd,
             @Inject("${domain}") String domain,
-            @Inject("${fs.works}") List<String> works
+            @Inject("${fs.works}") List<String> works,
+            @Inject("${fs.useWaf}") Boolean useWaf,
+            @Inject("${fs.wafUrl}") String wafUrl
     ) {
         System system = new System();
         if (ObjUtil.isEmpty(fileDir)) {
@@ -44,7 +46,11 @@ public class SystemConfig {
                 .setPwd(pwd)
                 .setDomain(domain)
                 .setMaster(master)
-                .setWorks(works);
+                .setWorks(works)
+                .setUseWaf(useWaf);
+        if (useWaf) {
+            system.setWafUrl(wafUrl);
+        }
         return system;
     }
 

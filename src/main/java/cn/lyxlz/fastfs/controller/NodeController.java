@@ -4,20 +4,14 @@ import cn.lyxlz.fastfs.annotation.Login;
 import cn.lyxlz.fastfs.entity.Node;
 import cn.lyxlz.fastfs.entity.System;
 import cn.lyxlz.fastfs.service.DistributService;
-import cn.lyxlz.fastfs.util.CacheUtil;
 import cn.lyxlz.fastfs.util.NodeUtil;
 import cn.lyxlz.fastfs.util.ResUtil;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONB;
 import lombok.extern.slf4j.Slf4j;
-import org.noear.snack.ONode;
 import org.noear.solon.annotation.Controller;
 import org.noear.solon.annotation.Get;
 import org.noear.solon.annotation.Inject;
 import org.noear.solon.annotation.Mapping;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -43,12 +37,9 @@ public class NodeController {
     @Mapping("/info")
     public Map<String, Object> getNodeInfo() {
         // 只有从节点才需要返回信息
-        if (!system.getMaster()) {
-            String nodeJson = NodeUtil.toJson(node);
-            log.debug("当前节点信息{}", nodeJson);
-            return ResUtil.getRS(200, nodeJson);
-        }
-        return ResUtil.getRS(403, "不能访问主节点信息");
+        String nodeJson = NodeUtil.toJson(node);
+        log.debug("当前节点信息{}", nodeJson);
+        return ResUtil.getRS(200, nodeJson);
     }
 
     @Get

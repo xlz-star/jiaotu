@@ -8,6 +8,14 @@ import java.util.List;
  * 数据库文件操作
  */
 public interface FileDao {
+
+    /**
+     * 模糊匹配文件
+     * @param fileName
+     * @return
+     */
+    List<FileVO> getFileByLike(String fileName, String uid);
+
     /**
      * 获取文件真实路径
      *

@@ -28,7 +28,7 @@
     <parent>
         <groupId>org.noear</groupId>
         <artifactId>solon-parent</artifactId>
-        <version>2.6.0</version>
+        <version>3.0.6</version>
         <relativePath/>
     </parent>
 
@@ -42,11 +42,6 @@
                 <exclusion>
                     <groupId>org.noear</groupId>
                     <artifactId>solon.view.freemarker</artifactId>
-                </exclusion>
-                <!--排除默认的jlhttp依赖-->
-                <exclusion>
-                    <groupId>org.noear</groupId>
-                    <artifactId>solon.boot.jlhttp</artifactId>
                 </exclusion>
                 <!--排除默认的json解析器-->
                 <exclusion>
@@ -62,11 +57,6 @@
             <artifactId>solon.serialization.fastjson2</artifactId>
         </dependency>
 
-        <!--smarthttp 嵌入式http服务器-->
-        <dependency>
-            <groupId>org.noear</groupId>
-            <artifactId>solon.boot.smarthttp</artifactId>
-        </dependency>
 
         <!--Solon 日志模块-->
         <dependency>
@@ -193,7 +183,7 @@
             <id>tencent</id>
             <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
             <snapshots>
-                <enabled>true</enabled>
+                <enabled>false</enabled>
             </snapshots>
         </repository>
     </repositories>

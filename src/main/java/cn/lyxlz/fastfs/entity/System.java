@@ -62,4 +62,14 @@ public class System {
     private Boolean master;
 
     private List<String> works;
+
+    /**
+     * 是否启用waf
+     */
+    private Boolean useWaf;
+
+    /**
+     * waf地址
+     */
+    private String wafUrl;
 }
